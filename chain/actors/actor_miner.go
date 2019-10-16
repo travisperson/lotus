@@ -89,13 +89,13 @@ type MinerInfo struct {
 	PeerID peer.ID
 
 	// Amount of space in each sector committed to the network by this miner.
-	SectorSize types.BigInt
+	SectorSize uint64
 }
 
 type StorageMinerConstructorParams struct {
 	Owner      address.Address
 	Worker     address.Address
-	SectorSize types.BigInt
+	SectorSize uint64
 	PeerID     peer.ID
 }
 
@@ -244,7 +244,7 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 	}
 
 	// Power of the miner after adding this sector
-	futurePower := types.BigAdd(self.Power, mi.SectorSize)
+	futurePower := types.BigAdd(self.Power, types.NewInt(mi.SectorSize))
 	collateralRequired := CollateralForPower(futurePower)
 
 	if act.Balance.LessThan(collateralRequired) {
@@ -393,7 +393,7 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 
 	faults := self.CurrentFaultSet.All()
 
-	if ok, lerr := sectorbuilder.VerifyPost(mi.SectorSize.Uint64(),
+	if ok, lerr := sectorbuilder.VerifyPost(mi.SectorSize,
 		sectorbuilder.NewSortedSectorInfo(sectorInfos), seed, params.Proof,
 		faults); !ok || lerr != nil {
 		if lerr != nil {
@@ -426,7 +426,7 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 
 	oldPower := self.Power
 	self.Power = types.BigMul(types.NewInt(pss.Count-uint64(len(faults))),
-		mi.SectorSize)
+		types.NewInt(mi.SectorSize))
 
 	enc, err := SerializeParams(&UpdateStorageParams{Delta: types.BigSub(self.Power, oldPower)})
 	if err != nil {
@@ -511,8 +511,8 @@ func GetFromSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, sectorID
 	return true, comms[0], comms[1], nil
 }
 
-func ValidatePoRep(maddr address.Address, ssize types.BigInt, params *CommitSectorParams) (bool, ActorError) {
-	ok, err := sectorbuilder.VerifySeal(ssize.Uint64(), params.CommR, params.CommD, params.CommRStar, maddr, params.SectorID, params.Proof)
+func ValidatePoRep(maddr address.Address, ssize uint64, params *CommitSectorParams) (bool, ActorError) {
+	ok, err := sectorbuilder.VerifySeal(ssize, params.CommR, params.CommD, params.CommRStar, maddr, params.SectorID, params.Proof)
 	if err != nil {
 		return false, aerrors.Absorb(err, 25, "verify seal failed")
 	}
@@ -626,7 +626,7 @@ func (sma StorageMinerActor) GetSectorSize(act *types.Actor, vmctx types.VMConte
 		return nil, err
 	}
 
-	return mi.SectorSize.Bytes(), nil
+	return types.NewInt(mi.SectorSize).Bytes(), nil
 }
 
 type PaymentVerifyParams struct {
@@ -674,7 +674,7 @@ func (sma StorageMinerActor) PaymentVerifyInclusion(act *types.Actor, vmctx type
 		return nil, aerrors.New(4, "miner does not have required sector")
 	}
 
-	ok, err := sectorbuilder.VerifyPieceInclusionProof(mi.SectorSize.Uint64(), voucherData.PieceSize.Uint64(), voucherData.CommP, commD, proof.Proof)
+	ok, err := sectorbuilder.VerifyPieceInclusionProof(mi.SectorSize, voucherData.PieceSize.Uint64(), voucherData.CommP, commD, proof.Proof)
 	if err != nil {
 		return nil, aerrors.Absorb(err, 5, "verify piece inclusion proof failed")
 	}

@@ -7,12 +7,12 @@ import (
 	"math/rand"
 
 	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/go-lotus/storage"
 	"github.com/filecoin-project/go-lotus/storage/sector"
 	"github.com/filecoin-project/go-lotus/storage/sectorblocks"
+	"golang.org/x/xerrors"
 )
 
 type StorageMinerAPI struct {
@@ -31,7 +31,11 @@ func (sm *StorageMinerAPI) ActorAddress(context.Context) (address.Address, error
 }
 
 func (sm *StorageMinerAPI) StoreGarbageData(ctx context.Context) (uint64, error) {
-	size := sectorbuilder.UserBytesForSectorSize(build.SectorSize)
+	ssize, err := sm.Miner.SectorSize(ctx)
+	if err != nil {
+		return 0, xerrors.Errorf("failed to get miner sector size: %w", err)
+	}
+	size := sectorbuilder.UserBytesForSectorSize(ssize)
 
 	name := fmt.Sprintf("fake-file-%d", rand.Intn(100000000))
 	sectorId, err := sm.Sectors.AddPiece(name, size, io.LimitReader(rand.New(rand.NewSource(42)), int64(size)))
