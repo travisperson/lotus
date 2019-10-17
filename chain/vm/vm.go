@@ -3,8 +3,9 @@ package vm
 import (
 	"context"
 	"fmt"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"math/big"
+
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/actors"
